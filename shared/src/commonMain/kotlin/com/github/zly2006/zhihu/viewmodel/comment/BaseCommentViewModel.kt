@@ -24,11 +24,11 @@ import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.viewmodel.CommentItem
-import com.github.zly2006.zhihu.viewmodel.ContentBlocklistEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.deleteSigned
+import com.github.zly2006.zhihu.viewmodel.filter.filterBlockedComments
 import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
@@ -72,36 +72,23 @@ abstract class BaseCommentViewModel(
 
     override fun processResponse(environment: PaginationEnvironment, data: List<DataHolder.Comment>, rawData: JsonArray) {
         debugData.addAll(rawData) // 保存原始JSON
-        filterBlockedComments(environment, data).forEach { comment ->
-            if (allData.none { it.id == comment.id }) {
-                // 避免服务器返回重复评论时重复添加，造成LazyColumn key冲突
-                allData.add(comment)
+        data
+            .filterBlockedComments(
+                environment.blockedUserIds(),
+                environment.ipLocationFilterSettings(),
+            ).forEach { comment ->
+                if (allData.none { it.id == comment.id }) {
+                    // 避免服务器返回重复评论时重复添加，造成LazyColumn key冲突
+                    allData.add(comment)
+                }
+                val commentItem = createCommentItem(comment, article)
+                commentsMap[comment.id] = commentItem
+                // 载入可见的子评论
+                comment.childComments.forEach {
+                    val childCommentItem = createCommentItem(it, article)
+                    commentsMap[it.id] = childCommentItem
+                }
             }
-            val commentItem = createCommentItem(comment, article)
-            commentsMap[comment.id] = commentItem
-            // 载入可见的子评论
-            comment.childComments.forEach {
-                val childCommentItem = createCommentItem(it, article)
-                commentsMap[it.id] = childCommentItem
-            }
-        }
-    }
-
-    private fun filterBlockedComments(
-        environment: ContentBlocklistEnvironment,
-        comments: List<DataHolder.Comment>,
-    ): List<DataHolder.Comment> {
-        val blockedUserIds = environment.blockedUserIds()
-        if (blockedUserIds.isEmpty()) return comments
-        return comments.mapNotNull { comment ->
-            if (comment.author.id in blockedUserIds) {
-                null
-            } else {
-                comment.copy(
-                    childComments = comment.childComments.filterNot { it.author.id in blockedUserIds },
-                )
-            }
-        }
     }
 
     abstract fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem

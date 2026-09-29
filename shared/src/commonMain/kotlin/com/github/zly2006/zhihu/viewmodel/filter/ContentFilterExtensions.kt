@@ -192,6 +192,17 @@ class FeedContentFilterPipeline(
             }
         }
 
+        val ipLocationFilter = settings.ipLocationFilter
+        if (ipLocationFilter.isActiveForPosts) {
+            filteredContents = filteredContents.filter { content ->
+                val kept = ipLocationFilter.allows(content.ipLocation)
+                if (!kept) {
+                    blocked.add(content to "IP属地不在白名单：${content.ipLocation}")
+                }
+                kept
+            }
+        }
+
         return FeedContentFilterResult(filteredContents, blocked)
     }
 }
@@ -378,6 +389,7 @@ data class FilterableContent(
     val navDestinationJson: String? = null,
     val questionAuthorName: String? = null,
     val questionAuthorId: String? = null,
+    val ipLocation: String? = null,
 )
 
 data class FeedContentIdentity(
@@ -426,6 +438,11 @@ fun FeedDisplayItem.toFilterableContent(
     url = feed?.target?.url,
     feedJson = feed?.let { runCatching { feedFilterRecordJson.encodeToString(it) }.getOrNull() },
     navDestinationJson = navDestination?.let { runCatching { feedFilterRecordJson.encodeToString(it) }.getOrNull() },
+    ipLocation = when (rawContent) {
+        is DataHolder.Answer -> rawContent.ipInfo
+        is DataHolder.Article -> rawContent.ipInfo
+        else -> null
+    },
 )
 
 /** 从内容实体中提取主题 ID 列表，供 feed 过滤阶段的主题规则使用。 */
@@ -500,6 +517,7 @@ data class FeedFilterSettings(
     val enableUserBlocking: Boolean = true,
     val enableTopicBlocking: Boolean = true,
     val topicBlockingThreshold: Int = 1,
+    val ipLocationFilter: IpLocationFilterSettings = IpLocationFilterSettings(),
     val adBlockSettings: FeedAdBlockSettings = FeedAdBlockSettings(),
 )
 
@@ -513,6 +531,7 @@ fun SettingsStore.toFeedFilterSettings(): FeedFilterSettings = FeedFilterSetting
     enableUserBlocking = getBoolean("enableUserBlocking", true),
     enableTopicBlocking = getBoolean("enableTopicBlocking", true),
     topicBlockingThreshold = getInt("topicBlockingThreshold", 1),
+    ipLocationFilter = toIpLocationFilterSettings(),
     adBlockSettings = FeedAdBlockSettings(
         blockZhihuAdPlatform = getBoolean("blockZhihuAdPlatform", true),
         blockZhihuSchool = getBoolean("blockZhihuSchool", true),

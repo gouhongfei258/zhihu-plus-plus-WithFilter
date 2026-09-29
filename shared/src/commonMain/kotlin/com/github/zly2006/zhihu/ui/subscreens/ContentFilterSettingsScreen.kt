@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -32,6 +33,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -58,6 +60,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
@@ -86,6 +89,11 @@ import com.github.zly2006.zhihu.viewmodel.QUESTION_FOLLOWERS_THRESHOLD_PREFERENC
 import com.github.zly2006.zhihu.viewmodel.QualityFilterMode
 import com.github.zly2006.zhihu.viewmodel.VIDEO_FOLLOWERS_THRESHOLD_PREFERENCE_KEY
 import com.github.zly2006.zhihu.viewmodel.VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.filter.IP_LOCATION_FILTER_COMMENTS_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.filter.IP_LOCATION_FILTER_ENABLED_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.filter.IP_LOCATION_FILTER_POSTS_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.filter.IP_LOCATION_WHITELIST_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.filter.IpLocationFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -532,6 +540,112 @@ fun ContentFilterSettingsScreen(
             }
 
             SettingItemGroup {
+                var ipLocationWhitelist by remember {
+                    mutableStateOf(settings.getStringSet(IP_LOCATION_WHITELIST_PREFERENCE_KEY, emptySet()))
+                }
+                val ipLocationFilterEnabled = remember {
+                    mutableStateOf(settings.getBoolean(IP_LOCATION_FILTER_ENABLED_PREFERENCE_KEY, false))
+                }
+                val ipLocationSummary = IpLocationFilterSettings(
+                    enabled = ipLocationFilterEnabled.value,
+                    whitelist = ipLocationWhitelist,
+                )
+                SettingItemWithSwitch(
+                    modifier = Modifier.testTag("contentFilterSettings:enableIpLocationFilter"),
+                    title = { Text("启用 IP 属地白名单过滤") },
+                    description = {
+                        Text(
+                            if (ipLocationFilterEnabled.value && !ipLocationSummary.hasWhitelistEntries) {
+                                "白名单为空，当前不会过滤任何内容；请先添加属地"
+                            } else {
+                                "只保留 IP 属地命中白名单的帖子和评论；没有属地信息的内容始终保留"
+                            },
+                        )
+                    },
+                    checked = ipLocationFilterEnabled.value,
+                    onCheckedChange = { checked ->
+                        ipLocationFilterEnabled.value = checked
+                        settings.putBoolean(IP_LOCATION_FILTER_ENABLED_PREFERENCE_KEY, checked)
+                    },
+                    settingKey = IP_LOCATION_FILTER_ENABLED_PREFERENCE_KEY,
+                    highlightedKey = highlightedSetting,
+                )
+
+                AnimatedVisibility(visible = ipLocationFilterEnabled.value) {
+                    Column {
+                        val filterIpLocationPosts = remember {
+                            mutableStateOf(settings.getBoolean(IP_LOCATION_FILTER_POSTS_PREFERENCE_KEY, true))
+                        }
+                        SettingItemWithSwitch(
+                            modifier = Modifier.testTag("contentFilterSettings:ipLocationFilterPosts"),
+                            title = { Text("过滤帖子") },
+                            description = { Text("对首页信息流中的回答和文章应用属地白名单") },
+                            checked = filterIpLocationPosts.value,
+                            onCheckedChange = { checked ->
+                                filterIpLocationPosts.value = checked
+                                settings.putBoolean(IP_LOCATION_FILTER_POSTS_PREFERENCE_KEY, checked)
+                            },
+                            settingKey = IP_LOCATION_FILTER_POSTS_PREFERENCE_KEY,
+                            highlightedKey = highlightedSetting,
+                        )
+
+                        val filterIpLocationComments = remember {
+                            mutableStateOf(settings.getBoolean(IP_LOCATION_FILTER_COMMENTS_PREFERENCE_KEY, true))
+                        }
+                        SettingItemWithSwitch(
+                            modifier = Modifier.testTag("contentFilterSettings:ipLocationFilterComments"),
+                            title = { Text("过滤评论") },
+                            description = { Text("隐藏属地不在白名单内的评论和子评论") },
+                            checked = filterIpLocationComments.value,
+                            onCheckedChange = { checked ->
+                                filterIpLocationComments.value = checked
+                                settings.putBoolean(IP_LOCATION_FILTER_COMMENTS_PREFERENCE_KEY, checked)
+                            },
+                            settingKey = IP_LOCATION_FILTER_COMMENTS_PREFERENCE_KEY,
+                            highlightedKey = highlightedSetting,
+                        )
+
+                        var showWhitelistDialog by remember { mutableStateOf(false) }
+                        SettingItem(
+                            modifier = Modifier.testTag("contentFilterSettings:ipLocationWhitelist"),
+                            title = { Text("IP 属地白名单") },
+                            description = {
+                                Text(
+                                    if (ipLocationWhitelist.isEmpty()) {
+                                        "尚未添加属地，采用包含匹配"
+                                    } else {
+                                        "包含匹配：${ipLocationWhitelist.sorted().joinToString("、")}"
+                                    },
+                                )
+                            },
+                            settingKey = IP_LOCATION_WHITELIST_PREFERENCE_KEY,
+                            highlightedKey = highlightedSetting,
+                            endAction = {
+                                Text(
+                                    ipLocationWhitelist.size.toString(),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                )
+                            },
+                            onClick = { showWhitelistDialog = true },
+                        )
+                        if (showWhitelistDialog) {
+                            IpLocationWhitelistDialog(
+                                initial = ipLocationWhitelist,
+                                onDismiss = { showWhitelistDialog = false },
+                                onConfirm = { updated ->
+                                    ipLocationWhitelist = updated
+                                    settings.putStringSet(IP_LOCATION_WHITELIST_PREFERENCE_KEY, updated)
+                                    showWhitelistDialog = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
+            SettingItemGroup {
                 val blockZhihuAdPlatform = remember { mutableStateOf(settings.getBoolean("blockZhihuAdPlatform", true)) }
                 SettingItemWithSwitch(
                     title = { Text("屏蔽知乎广告平台内容") },
@@ -696,4 +810,92 @@ fun ContentFilterSettingsScreen(
             }
         }
     }
+}
+
+/**
+ * IP 属地白名单编辑弹窗，支持逐条添加和删除。
+ *
+ * 条目采用包含匹配，因此可以是省份（上海）或更短的片段；保存后由调用方写入偏好设置。
+ */
+@Composable
+private fun IpLocationWhitelistDialog(
+    initial: Set<String>,
+    onDismiss: () -> Unit,
+    onConfirm: (Set<String>) -> Unit,
+) {
+    val userMessages = rememberUserMessageSink()
+    var entries by remember { mutableStateOf(initial.sorted()) }
+    var input by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("IP 属地白名单") },
+        text = {
+            Column {
+                Text("内容的 IP 属地包含任意一条白名单即保留；没有属地信息的内容始终保留。")
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = input,
+                        onValueChange = { input = it },
+                        label = { Text("属地，例如 上海") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("contentFilterSettings:ipLocationWhitelistInput"),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(
+                        onClick = {
+                            val value = input.trim()
+                            when {
+                                value.isEmpty() -> userMessages.showMessage("请输入属地")
+                                value in entries -> userMessages.showMessage("该属地已在白名单中")
+                                else -> {
+                                    entries = (entries + value).sorted()
+                                    input = ""
+                                }
+                            }
+                        },
+                    ) {
+                        Text("添加")
+                    }
+                }
+                if (entries.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Column(
+                        modifier = Modifier
+                            .heightIn(max = 240.dp)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        entries.forEach { entry ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(entry)
+                                IconButton(
+                                    onClick = { entries = entries - entry },
+                                    modifier = Modifier.testTag("contentFilterSettings:ipLocationWhitelistRemove_$entry"),
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = "删除 $entry")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(entries.toSet()) }) {
+                Text("保存")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        },
+    )
 }

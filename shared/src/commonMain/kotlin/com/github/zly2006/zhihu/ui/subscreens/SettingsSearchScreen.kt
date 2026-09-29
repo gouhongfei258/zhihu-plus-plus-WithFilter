@@ -67,6 +67,10 @@ import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.filter.IP_LOCATION_FILTER_COMMENTS_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.filter.IP_LOCATION_FILTER_ENABLED_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.filter.IP_LOCATION_FILTER_POSTS_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.filter.IP_LOCATION_WHITELIST_PREFERENCE_KEY
 
 const val SETTINGS_SEARCH_INPUT_TAG = "settingsSearch.input"
 const val SETTINGS_SEARCH_RESULTS_TAG = "settingsSearch.results"
@@ -233,6 +237,10 @@ private val settingsSearchEntries = buildList {
     add(recommendEntry("recommend.blockWeChatOfficialAccount", "屏蔽微信公众号文章", "过滤微信公众号外链内容。", "blockWeChatOfficialAccount", listOf("微信")))
     add(recommendEntry("recommend.blockPaidContent", "屏蔽知乎盐选付费内容", "过滤会员付费内容。", "blockPaidContent", listOf("盐选", "付费")))
     add(recommendEntry("recommend.reverseBlock", "反向屏蔽", "只保留广告和付费内容的调试模式。", "reverseBlock"))
+    add(recommendEntry("recommend.enableIpLocationFilter", "启用 IP 属地白名单过滤", "只保留 IP 属地命中白名单的帖子和评论。", IP_LOCATION_FILTER_ENABLED_PREFERENCE_KEY, listOf("IP属地", "属地", "白名单")))
+    add(recommendEntry("recommend.ipLocationFilterPosts", "IP 属地过滤帖子", "对首页信息流应用属地白名单。", IP_LOCATION_FILTER_POSTS_PREFERENCE_KEY, listOf("IP属地", "帖子", "信息流")))
+    add(recommendEntry("recommend.ipLocationFilterComments", "IP 属地过滤评论", "隐藏属地不在白名单内的评论。", IP_LOCATION_FILTER_COMMENTS_PREFERENCE_KEY, listOf("IP属地", "评论")))
+    add(recommendEntry("recommend.ipLocationWhitelist", "IP 属地白名单", "管理白名单中的属地条目。", IP_LOCATION_WHITELIST_PREFERENCE_KEY, listOf("IP属地", "白名单", "属地列表")))
     add(
         SettingsSearchEntry(
             id = "recommend.blocklist",

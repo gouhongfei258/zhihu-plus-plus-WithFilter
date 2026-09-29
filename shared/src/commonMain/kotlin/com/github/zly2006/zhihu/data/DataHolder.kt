@@ -968,3 +968,11 @@ object DataHolder {
         val author: JsonElement? = null,
     )
 }
+
+/**
+ * 评论的 IP 属地。
+ *
+ * 取 `comment_tag` 中 `type == "ip_info"` 的条目文本，例如“上海”；接口未返回该标签时为 null。
+ */
+val DataHolder.Comment.ipLocation: String?
+    get() = commentTag.firstOrNull { it.type == "ip_info" }?.text?.takeIf { it.isNotBlank() }

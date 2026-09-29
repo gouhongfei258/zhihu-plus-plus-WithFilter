@@ -235,6 +235,70 @@ class FeedDisplayFilterPipelineTest {
     }
 
     @Test
+    fun filtersArticleItemsByIpLocationWhitelistAndKeepsMissingLocation() = runTest {
+        val fixture = fixture(
+            settings = FeedFilterSettings(
+                ipLocationFilter = IpLocationFilterSettings(enabled = true, whitelist = setOf("上海")),
+            ),
+        )
+
+        val result = fixture
+            .pipeline(
+                detailProvider = provider(
+                    1L to article("allowed", ipInfo = "上海"),
+                    2L to article("blocked", ipInfo = "吉林"),
+                    3L to article("unknown"),
+                ),
+            ).filter(listOf(item("allowed", 1), item("blocked", 2), item("unknown", 3)))
+
+        assertEquals(listOf("allowed", "unknown"), result.map { it.title })
+        assertEquals(
+            listOf("IP属地不在白名单：吉林"),
+            fixture.database
+                .blockedFeedRecordDao()
+                .observeAll()
+                .first()
+                .map { it.blockedReason },
+        )
+        fixture.database.close()
+    }
+
+    @Test
+    fun filtersAnswerItemsByIpLocationFromFetchedAnswerDetail() = runTest {
+        val fixture = fixture(
+            settings = FeedFilterSettings(
+                ipLocationFilter = IpLocationFilterSettings(enabled = true, whitelist = setOf("上海")),
+            ),
+        )
+
+        val result = fixture
+            .pipeline(
+                detailProvider = ContentDetailProvider { destination ->
+                    when (destination) {
+                        is Article -> answer(
+                            id = destination.id,
+                            questionId = 20,
+                            questionTitle = "loading...",
+                            ipInfo = "吉林",
+                        )
+                        else -> null
+                    }
+                },
+            ).filter(listOf(answerItem(questionId = 20, questionTitle = "loading...")))
+
+        assertEquals(emptyList(), result)
+        assertEquals(
+            listOf("IP属地不在白名单：吉林"),
+            fixture.database
+                .blockedFeedRecordDao()
+                .observeAll()
+                .first()
+                .map { it.blockedReason },
+        )
+        fixture.database.close()
+    }
+
+    @Test
     fun filtersAnswerItemsByBlockedQuestionAuthorSnapshot() = runTest {
         val fixture = fixture()
         fixture.database.blockedQuestionAuthorDao().insertUser(
@@ -504,6 +568,7 @@ class FeedDisplayFilterPipelineTest {
         title: String,
         content: String = title,
         paid: Boolean = false,
+        ipInfo: String? = null,
     ): DataHolder.Article = DataHolder.Article(
         id = title.hashCode().toLong(),
         author = author(),
@@ -516,6 +581,7 @@ class FeedDisplayFilterPipelineTest {
         updated = 1L,
         url = "https://www.zhihu.com/p/$title",
         voteupCount = 0,
+        ipInfo = ipInfo,
         paidInfo = if (paid) buildJsonObject { } else null,
     )
 
@@ -524,6 +590,7 @@ class FeedDisplayFilterPipelineTest {
         questionId: Long,
         questionTitle: String,
         questionAuthor: DataHolder.Author? = null,
+        ipInfo: String? = null,
     ): DataHolder.Answer = DataHolder.Answer(
         answerType = "answer",
         author = author(),
@@ -547,6 +614,7 @@ class FeedDisplayFilterPipelineTest {
         updatedTime = 1L,
         url = "https://www.zhihu.com/question/$questionId/answer/$id",
         voteupCount = 0,
+        ipInfo = ipInfo,
     )
 
     private fun question(

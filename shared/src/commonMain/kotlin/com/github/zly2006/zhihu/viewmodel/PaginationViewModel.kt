@@ -47,6 +47,7 @@ import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
+import com.github.zly2006.zhihu.viewmodel.filter.IpLocationFilterSettings
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.call.NoTransformationFoundException
@@ -442,6 +443,8 @@ interface ContentBlocklistEnvironment {
     suspend fun isQuestionAuthorBlocked(userId: String): Boolean = false
 
     fun blockedUserIds(): Set<String> = emptySet()
+
+    fun ipLocationFilterSettings(): IpLocationFilterSettings = IpLocationFilterSettings()
 
     suspend fun addBlockedUser(
         userId: String,

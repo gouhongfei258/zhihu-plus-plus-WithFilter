@@ -39,6 +39,10 @@ class FeedFilterSettingsTest {
             "blockZhihuSchool" to false,
             "blockWeChatOfficialAccount" to false,
             "blockPaidContent" to false,
+            "enableIpLocationFilter" to true,
+            "ipLocationFilterPosts" to false,
+            "ipLocationFilterComments" to true,
+            "ipLocationWhitelist" to setOf("上海", "北京"),
         ).toFeedFilterSettings()
 
         assertEquals(false, settings.enableContentFilter)
@@ -54,6 +58,24 @@ class FeedFilterSettingsTest {
         assertEquals(false, settings.adBlockSettings.blockZhihuSchool)
         assertEquals(false, settings.adBlockSettings.blockWeChatOfficialAccount)
         assertEquals(false, settings.adBlockSettings.blockPaidContent)
+        assertEquals(true, settings.ipLocationFilter.enabled)
+        assertEquals(false, settings.ipLocationFilter.filterPosts)
+        assertEquals(true, settings.ipLocationFilter.filterComments)
+        assertEquals(setOf("上海", "北京"), settings.ipLocationFilter.whitelist)
+        assertEquals(false, settings.ipLocationFilter.isActiveForPosts)
+        assertEquals(true, settings.ipLocationFilter.isActiveForComments)
+    }
+
+    @Test
+    fun ipLocationFilterDefaultsToDisabledWithEmptyWhitelist() {
+        val settings = mapBackedSettingsStore().toFeedFilterSettings()
+
+        assertEquals(false, settings.ipLocationFilter.enabled)
+        assertEquals(true, settings.ipLocationFilter.filterPosts)
+        assertEquals(true, settings.ipLocationFilter.filterComments)
+        assertEquals(emptySet(), settings.ipLocationFilter.whitelist)
+        assertEquals(false, settings.ipLocationFilter.isActiveForPosts)
+        assertEquals(false, settings.ipLocationFilter.isActiveForComments)
     }
 
     private fun mapBackedSettingsStore(vararg values: Pair<String, Any>): SettingsStore {

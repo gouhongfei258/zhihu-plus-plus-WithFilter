@@ -134,6 +134,7 @@ import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.Node
 import com.fleeksoft.ksoup.nodes.TextNode
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.ipLocation
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -1411,10 +1412,7 @@ private fun CommentItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            val ipInfo = comment.item.commentTag
-                .firstOrNull {
-                    it.type == "ip_info"
-                }?.text
+            val ipInfo = comment.item.ipLocation
             if (ipInfo != null) {
                 Spacer(modifier = Modifier.width(8.dp))
 
